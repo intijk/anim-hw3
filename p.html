@@ -7,7 +7,7 @@
 		<style>
 			body {
 				font-family: Monospace;
-				background-color: #202020;
+				background-color: #e2d8ce;
 				margin: 0px;
 				overflow: hidden;
 			}
@@ -19,13 +19,18 @@
 		<script src="js/libs/stats.min.js"></script>
 		<script src="js/controls/OrbitControls.js"></script>
 		<script src="js/glMatrix.min.js"></script>
+
+		<script src="js/curve.js"></script>
 		<script>
 			var loader, base, trunk, arm1, arm2, hammer;
 			var container, stats;
 			var camera, scene, renderer, objects;
 			var particleLight, pointLight;
 			var modelInitialized=false;
-	
+			var projector=new THREE.Projector();
+			var pathCurve=new Curve();
+			var pathCurveGeo=new THREE.Geometry();
+
 
 			init();
 			animate();
@@ -34,14 +39,16 @@
 				container = document.createElement('div');
 				document.body.appendChild(container);
 
-				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.0000001, 2000 );
+				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.025, 2000 );
 				width=window.innerWidth;
 				height=window.innerHeight;
 				o_width=width;
 				o_height=height;
 				//camera.position.set( 0, 200, 800 );
 				{
-					camera.position.set( 0, 1, 1 );
+					camera.position.set( -0.5, 2, 2.5 );
+					//camera.position.set( 0,0,1);
+					camera.updateProjectionMatrix();
 					controls = new THREE.OrbitControls( camera );
 					controls.addEventListener( 'change', render );
 					window.addEventListener( 'resize', onWindowResize, false );
@@ -60,7 +67,7 @@
 						geometry.vertices.push( new THREE.Vector3( i, 0, - size ) );
 						geometry.vertices.push( new THREE.Vector3( i, 0,   size ) );
 					}
-					var material = new THREE.LineBasicMaterial( { color: 0xffffff, opacity: 1, linewidth:5 } );
+					var material = new THREE.LineBasicMaterial( { color: 0xb3aca4, opacity: 1, linewidth:2 } );
 					var line = new THREE.Line( geometry, material );
 					line.type = THREE.LinePieces;
 					scene.add( line );
@@ -113,14 +120,21 @@
 					scene.add( pointLight );
 				}
 
-				//rederer
+				//renderer
 				{
 					renderer = new THREE.CanvasRenderer();
 					renderer.setSize( o_width, o_height);
+
+					renderer.domElement.style.position = 'absolute';
+					renderer.domElement.style.top= '0px';
+					renderer.domElement.style.left = '0px';
+					renderer.domElement.style.backgroundColor="#e8dfd6";
 					container.appendChild( renderer.domElement );
+					//console.log(renderer.domElement);
 				}
 
-				//canvas
+				//debug canvas
+				/*
 				{
 					var debugCanvas = document.createElement( 'canvas' );
 					debugCanvas.width = 512;
@@ -135,25 +149,41 @@
 					debugContext.setTransform( 1, 0, 0, 1, 256, 256 );
 					debugContext.strokeStyle = '#000000';
 				}
+				*/
 
 				//stats
+				/*
 				{
 					stats = new Stats();
 					stats.domElement.style.position = 'absolute';
 					stats.domElement.style.top = '0px';
 					container.appendChild(stats.domElement);
 				}
+				*/
 
+				//pathCurve
+
+				pathCurveGeo.vertices.push(new THREE.Vector3(1,0,1));
+				pathCurveGeo.vertices.push(new THREE.Vector3(-1,0,-1));
+				pathCurveGeo.vertices.push(new THREE.Vector3(0.5,0,0.1));
+				pathCurveGeo.vertices.push(new THREE.Vector3(0.1,0,0.5));
+				var lineMaterial=new THREE.LineBasicMaterial({color:0xea892a});
+				var pathCurveLine=new THREE.Line(pathCurveGeo, lineMaterial);
+				scene.add(pathCurveLine);
 			}
+
 			function onWindowResize() {
-				camera.aspect = window.innerWidth / window.innerHeight;
+				o_width=window.innerWidth;
+			   	o_height=window.innerHeight;
+				camera.aspect = o_width/o_height;
 				camera.updateProjectionMatrix();
-				renderer.setSize( window.innerWidth, window.innerHeight );
+				//renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.setSize( o_width, o_height);
 			}
 			function animate() {
 				requestAnimationFrame( animate );
 				render();
-				stats.update();
+				//stats.update();
 				controls.update();
 			}
 			var hammerG,arm2G,arm1G,trunkG,baseG;
@@ -222,6 +252,8 @@
 				balanceHammer();
 				renderer.render( scene, camera );
 			}
+
+			//Rotate Objects
 			function rotateTrunk(angle){
 				trunkG.angle=angle;
 				var angle=trunkG.angle/180*Math.PI;
@@ -242,7 +274,6 @@
 			}
 			function rotateArm2(angle){
 				arm2G.angle=angle;
-				console.log(arm2G.angle)
 				angle=arm2G.angle/180*Math.PI;
 				arm2G.matrix.identity();
 				var m=new THREE.Matrix4();
@@ -253,7 +284,6 @@
 			}
 			function rotateHammer(angle){
 				hammerG.angle=angle;
-				console.log(hammerG.angle)
 				angle=hammerG.angle/180*Math.PI;
 				hammerG.matrix.identity();
 				var m=new THREE.Matrix4();
@@ -264,6 +294,37 @@
 			}
 			function balanceHammer(){
 				rotateHammer(arm1G.angle+arm2G.angle);
+			}
+
+			//Tackle Interactive
+			renderer.domElement.addEventListener('mousedown', onMouseDown, false);
+			function onMouseDown(event){
+				console.log("==============");
+				var eleLeft=renderer.domElement.offsetLeft;
+				var eleTop=renderer.domElement.offsetTop;
+				var eleX=(event.clientX-eleLeft)/o_width*2-1;
+				var eleY=(event.clientY-eleTop)/o_height*(-2)+1;
+				var vector = new THREE.Vector3(eleX,eleY,0.5 );
+				projector.unprojectVector( vector, camera );
+				var dir = vector.sub( camera.position ).normalize();
+				var ray = new THREE.Ray( camera.position, dir );
+				var distance = - camera.position.y / dir.y;
+				var pos = camera.position.clone().add( dir.multiplyScalar( distance ) );
+				pos.y=0;
+				console.log("pos",pos);
+				//add point	
+				if(event.button==2){
+					if(pos.x>=-1 && pos.x<=1 && pos.z>=-1 && pos.z<=1 && pos.distanceTo(new THREE.Vector3(0,0,0)) > 0.3){
+						pathCurve.points.push(new THREE.Vector2(pos.x,pos.z));
+						if(pathCurve.points.length<2){
+							pathCurveGeo.vertices=[];
+							pathCurveGeo.vertices.push(new THREE.Vector3(0,0,0));
+							pathCurveGeo.vertices.push(new THREE.Vector3(0,0,0));
+						}else{
+							pathCurveGeo.vertices=pathCurve.curvePoints();
+						}
+					}
+				}
 			}
 
 		</script>

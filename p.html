@@ -29,7 +29,8 @@
 			var modelInitialized=false;
 			var projector=new THREE.Projector();
 			var pathCurve=new Curve();
-			var pathCurveGeo=new THREE.Geometry();
+			var pathCurveGeo,pathCurveLine;
+
 
 
 			init();
@@ -67,7 +68,7 @@
 						geometry.vertices.push( new THREE.Vector3( i, 0, - size ) );
 						geometry.vertices.push( new THREE.Vector3( i, 0,   size ) );
 					}
-					var material = new THREE.LineBasicMaterial( { color: 0xb3aca4, opacity: 1, linewidth:2 } );
+					var material = new THREE.LineBasicMaterial( { color: 0xb3aca4, opacity: 1, linewidth:1 } );
 					var line = new THREE.Line( geometry, material );
 					line.type = THREE.LinePieces;
 					scene.add( line );
@@ -82,7 +83,7 @@
 					m.makeScale(scale,scale,scale);
 					loader = new THREE.JSONLoader();
 					loader.load( 'obj/robot/base.js', function ( geometry ) {
-						base = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial( { overdraw: true } ) );
+						base = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial( { overdraw: true  } ) );
 						base.applyMatrix(m);
 					} );
 					loader.load( 'obj/robot/trunk.js', function ( geometry ) {
@@ -104,7 +105,8 @@
 						arm2.applyMatrix(m);
 					} );
 					loader.load( 'obj/robot/hammer.js', function ( geometry ) {
-						hammer = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial( { overdraw: true } ) );
+						hammer = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial( { overdraw:true } ) );
+
 						hammer.pivot=new THREE.Vector3(-0.915,0.176,0);
 						hammer.axis=new THREE.Vector3(0,0,1);
 						hammer.applyMatrix(m);
@@ -112,17 +114,28 @@
 				}
 
 				// Lights
+				/*
 				{
 					particleLight = new THREE.Particle( new THREE.ParticleBasicMaterial( { color: 0xffffff  } ) );
 					particleLight.scale.x = particleLight.scale.y = particleLight.scale.z = 4;
 					scene.add( particleLight );
 					pointLight = new THREE.PointLight( 0xffffff, 1 );
 					scene.add( pointLight );
+
+					particleLight.position.x = 40;
+					particleLight.position.y = 40;
+					particleLight.position.z = 40;
+					pointLight.position.x = particleLight.position.x;
+					pointLight.position.y = particleLight.position.y;
+					pointLight.position.z = particleLight.position.z;
+
 				}
+				*/
 
 				//renderer
 				{
-					renderer = new THREE.CanvasRenderer();
+					//renderer = new THREE.CanvasRenderer();
+					renderer = new THREE.WebGLRenderer();
 					renderer.setSize( o_width, o_height);
 
 					renderer.domElement.style.position = 'absolute';
@@ -130,7 +143,6 @@
 					renderer.domElement.style.left = '0px';
 					renderer.domElement.style.backgroundColor="#e8dfd6";
 					container.appendChild( renderer.domElement );
-					//console.log(renderer.domElement);
 				}
 
 				//debug canvas
@@ -152,24 +164,21 @@
 				*/
 
 				//stats
-				/*
 				{
 					stats = new Stats();
 					stats.domElement.style.position = 'absolute';
 					stats.domElement.style.top = '0px';
 					container.appendChild(stats.domElement);
 				}
-				*/
 
 				//pathCurve
-
+				pathCurveGeo=new THREE.Geometry();
+				pathCurveGeo.vertices.push(new THREE.Vector3(0,0,0));
 				pathCurveGeo.vertices.push(new THREE.Vector3(1,0,1));
-				pathCurveGeo.vertices.push(new THREE.Vector3(-1,0,-1));
-				pathCurveGeo.vertices.push(new THREE.Vector3(0.5,0,0.1));
-				pathCurveGeo.vertices.push(new THREE.Vector3(0.1,0,0.5));
-				var lineMaterial=new THREE.LineBasicMaterial({color:0xea892a});
-				var pathCurveLine=new THREE.Line(pathCurveGeo, lineMaterial);
+				lineMaterial=new THREE.LineBasicMaterial({color:0xea892a,linewidth:2});
+				pathCurveLine=new THREE.Line(pathCurveGeo, lineMaterial);
 				scene.add(pathCurveLine);
+
 			}
 
 			function onWindowResize() {
@@ -183,7 +192,7 @@
 			function animate() {
 				requestAnimationFrame( animate );
 				render();
-				//stats.update();
+				stats.update();
 				controls.update();
 			}
 			var hammerG,arm2G,arm1G,trunkG,baseG;
@@ -226,12 +235,6 @@
 				scene.position.z=0
 				camera.lookAt( scene.position );
 
-				particleLight.position.x = 0
-				particleLight.position.y = 300 
-				particleLight.position.z = 0
-				pointLight.position.x = particleLight.position.x;
-				pointLight.position.y = particleLight.position.y;
-				pointLight.position.z = particleLight.position.z;
 
 				if(arm1Step>0 && arm1G.angle+arm1Step>90){
 					arm1Step=-arm1Step;
@@ -299,7 +302,6 @@
 			//Tackle Interactive
 			renderer.domElement.addEventListener('mousedown', onMouseDown, false);
 			function onMouseDown(event){
-				console.log("==============");
 				var eleLeft=renderer.domElement.offsetLeft;
 				var eleTop=renderer.domElement.offsetTop;
 				var eleX=(event.clientX-eleLeft)/o_width*2-1;
@@ -309,24 +311,29 @@
 				var dir = vector.sub( camera.position ).normalize();
 				var ray = new THREE.Ray( camera.position, dir );
 				var distance = - camera.position.y / dir.y;
-				var pos = camera.position.clone().add( dir.multiplyScalar( distance ) );
+				var pos = camera.position.clone().add( dir.multiplyScalar( distance));
 				pos.y=0;
-				console.log("pos",pos);
 				//add point	
 				if(event.button==2){
 					if(pos.x>=-1 && pos.x<=1 && pos.z>=-1 && pos.z<=1 && pos.distanceTo(new THREE.Vector3(0,0,0)) > 0.3){
 						pathCurve.points.push(new THREE.Vector2(pos.x,pos.z));
-						if(pathCurve.points.length<2){
-							pathCurveGeo.vertices=[];
-							pathCurveGeo.vertices.push(new THREE.Vector3(0,0,0));
-							pathCurveGeo.vertices.push(new THREE.Vector3(0,0,0));
-						}else{
-							pathCurveGeo.vertices=pathCurve.curvePoints();
-						}
+
+						scene.remove(pathCurveLine);
+						pathCurveGeo=new THREE.Geometry();
+						pathCurveGeo.vertices=pathCurve.curvePoints();
+						pathCurveLine=new THREE.Line(pathCurveGeo, lineMaterial);
+						scene.add(pathCurveLine);
+
+						//pathPoints
+						var geometry = new THREE.SphereGeometry(0.03, 24, 24 );
+						var sphere = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial( { color: 0xe32429,overdraw:true } ));
+						sphere.position.x=pathCurve.points[pathCurve.points.length-1].x;
+						sphere.position.y=0;
+						sphere.position.z=pathCurve.points[pathCurve.points.length-1].y;
+						scene.add(sphere);
 					}
 				}
 			}
-
 		</script>
 	</body>
 </html>

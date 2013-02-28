@@ -12,6 +12,7 @@ Curve.prototype.curvePoints=function(type){
 		var pList=[];
 		var Mm,G,T,e,x,y,i,j,step,C0,C1,D0,D1;
 		if(this.points.length<2){
+			pList.push(new THREE.Vector3(0,0,0));
 			return pList;
 		}
 		for(i=0;i<this.points.length-1;i++){

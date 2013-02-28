@@ -29,9 +29,6 @@
 			var modelInitialized=false;
 			var projector=new THREE.Projector();
 			var pathCurve=new Curve();
-			var pathCurveGeo,pathCurveLine;
-
-
 
 			init();
 			animate();
@@ -114,7 +111,6 @@
 				}
 
 				// Lights
-				/*
 				{
 					particleLight = new THREE.Particle( new THREE.ParticleBasicMaterial( { color: 0xffffff  } ) );
 					particleLight.scale.x = particleLight.scale.y = particleLight.scale.z = 4;
@@ -122,15 +118,14 @@
 					pointLight = new THREE.PointLight( 0xffffff, 1 );
 					scene.add( pointLight );
 
-					particleLight.position.x = 40;
-					particleLight.position.y = 40;
-					particleLight.position.z = 40;
+					particleLight.position.x = 1;
+					particleLight.position.y = 0;
+					particleLight.position.z = 1;
 					pointLight.position.x = particleLight.position.x;
 					pointLight.position.y = particleLight.position.y;
 					pointLight.position.z = particleLight.position.z;
 
 				}
-				*/
 
 				//renderer
 				{
@@ -171,13 +166,6 @@
 					container.appendChild(stats.domElement);
 				}
 
-				//pathCurve
-				pathCurveGeo=new THREE.Geometry();
-				pathCurveGeo.vertices.push(new THREE.Vector3(0,0,0));
-				pathCurveGeo.vertices.push(new THREE.Vector3(1,0,1));
-				lineMaterial=new THREE.LineBasicMaterial({color:0xea892a,linewidth:2});
-				pathCurveLine=new THREE.Line(pathCurveGeo, lineMaterial);
-				scene.add(pathCurveLine);
 
 			}
 
@@ -301,7 +289,7 @@
 
 			//Tackle Interactive
 			renderer.domElement.addEventListener('mousedown', onMouseDown, false);
-			function onMouseDown(event){
+			function getGridPos(event){
 				var eleLeft=renderer.domElement.offsetLeft;
 				var eleTop=renderer.domElement.offsetTop;
 				var eleX=(event.clientX-eleLeft)/o_width*2-1;
@@ -312,25 +300,28 @@
 				var ray = new THREE.Ray( camera.position, dir );
 				var distance = - camera.position.y / dir.y;
 				var pos = camera.position.clone().add( dir.multiplyScalar( distance));
-				pos.y=0;
+				return new THREE.Vector2(pos.x,pos.z);
+			}
+
+			function onMouseDown(event){
+				var pos=getGridPos(event);
+				if(event.button==0){
+						var i;
+						for(i=0;i<pathCurve.points.length;i++){
+							console.log(pos.distanceTo(pathCurve.points[i]));
+							if(pos.distanceTo(pathCurve.points[i])<pathCurve.pointRadius){
+								pathCurve.pointClicked=true;
+								pathCurve.pointPos=i;
+								console.log("pont clicked", i);
+								break;
+							}
+						}
+				}
 				//add point	
 				if(event.button==2){
-					if(pos.x>=-1 && pos.x<=1 && pos.z>=-1 && pos.z<=1 && pos.distanceTo(new THREE.Vector3(0,0,0)) > 0.3){
-						pathCurve.points.push(new THREE.Vector2(pos.x,pos.z));
-
-						scene.remove(pathCurveLine);
-						pathCurveGeo=new THREE.Geometry();
-						pathCurveGeo.vertices=pathCurve.curvePoints();
-						pathCurveLine=new THREE.Line(pathCurveGeo, lineMaterial);
-						scene.add(pathCurveLine);
-
-						//pathPoints
-						var geometry = new THREE.SphereGeometry(0.03, 24, 24 );
-						var sphere = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial( { color: 0xe32429,overdraw:true } ));
-						sphere.position.x=pathCurve.points[pathCurve.points.length-1].x;
-						sphere.position.y=0;
-						sphere.position.z=pathCurve.points[pathCurve.points.length-1].y;
-						scene.add(sphere);
+					if(pos.x>=-1 && pos.x<=1 && pos.y>=-1 && pos.y<=1 && pos.distanceTo(new THREE.Vector2(0,0)) > 0.3){
+						pathCurve.points.push(new THREE.Vector2(pos.x,pos.y));
+						pathCurve.draw(scene);
 					}
 				}
 			}

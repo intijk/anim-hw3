@@ -1,17 +1,15 @@
 function Curve() {
-	
+	this.points=new Array();
+	this.pointRadius=0.025;
+	this.curveLine=null;
+	this.curvePoints=new THREE.Object3D();
 };
-Curve.prototype.points=new Array();
-Curve.prototype.pointRadius=0.025;
-
-Curve.prototype.curveLine=new THREE.Line(this.curveGeo, this.lineMaterial);
 Curve.prototype.updateLine=function(){
 	var curveGeo=new THREE.Geometry();
 	curveGeo.vertices=this.getCurvePoints();
 	this.curveLine=new THREE.Line(curveGeo,new THREE.LineBasicMaterial({color:0xea892a,linewidth:2}));
 };
 
-Curve.prototype.curvePoints=new THREE.Object3D();
 Curve.prototype.updatePoints=function(){
 	this.curvePoints.children=[];
 	for(i=0;i<this.points.length;i++){

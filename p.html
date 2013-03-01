@@ -29,6 +29,9 @@
 			var modelInitialized=false;
 			var projector=new THREE.Projector();
 			var pathCurve=new Curve();
+			var controls;
+			var panelCurve=new Curve();
+			var panelR,panelScene,panelCamera;
 
 			init();
 			animate();
@@ -37,13 +40,11 @@
 				container = document.createElement('div');
 				document.body.appendChild(container);
 
-				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.025, 2000 );
-				width=window.innerWidth;
-				height=window.innerHeight;
-				o_width=width;
-				o_height=height;
+				o_width=window.innerWidth*0.618;
+				o_height=window.innerHeight;
 				//camera.position.set( 0, 200, 800 );
 				{
+					camera = new THREE.PerspectiveCamera( 45, o_width / o_height, 0.025, 2000 );
 					camera.position.set( -0.5, 2, 2.5 );
 					//camera.position.set( 0,0,1);
 					camera.updateProjectionMatrix();
@@ -110,22 +111,6 @@
 					} );
 				}
 
-				// Lights
-				{
-					particleLight = new THREE.Particle( new THREE.ParticleBasicMaterial( { color: 0xffffff  } ) );
-					particleLight.scale.x = particleLight.scale.y = particleLight.scale.z = 4;
-					scene.add( particleLight );
-					pointLight = new THREE.PointLight( 0xffffff, 1 );
-					scene.add( pointLight );
-
-					particleLight.position.x = 1;
-					particleLight.position.y = 0;
-					particleLight.position.z = 1;
-					pointLight.position.x = particleLight.position.x;
-					pointLight.position.y = particleLight.position.y;
-					pointLight.position.z = particleLight.position.z;
-
-				}
 
 				//renderer
 				{
@@ -138,25 +123,55 @@
 					renderer.domElement.style.left = '0px';
 					renderer.domElement.style.backgroundColor="#e8dfd6";
 					container.appendChild( renderer.domElement );
-				}
 
-				//debug canvas
-				/*
+				}
+				//panel
 				{
-					var debugCanvas = document.createElement( 'canvas' );
-					debugCanvas.width = 512;
-					debugCanvas.height = 512;
-					debugCanvas.style.position = 'absolute';
-					debugCanvas.style.top = '0px';
-					debugCanvas.style.left = '0px';
+					panelR=new THREE.CanvasRenderer();
+					panelR = new THREE.WebGLRenderer();
+					panelR.setSize( window.innerWidth-o_width, o_height*(1-0.618));
+					panelR.domElement.style.position = 'absolute';
+					panelR.domElement.style.top= '0px';
+					var str=o_width.toString();
+					str+='px';
+					panelR.domElement.style.left = str;
+					panelR.domElement.style.backgroundColor="#e8dfd6";
+					container.appendChild(panelR.domElement );
 
-					container.appendChild( debugCanvas );
-
-					debugContext = debugCanvas.getContext( '2d' );
-					debugContext.setTransform( 1, 0, 0, 1, 256, 256 );
-					debugContext.strokeStyle = '#000000';
+					panelCurve.points.push(new THREE.Vector2(0,0));
+					panelCurve.points.push(new THREE.Vector2(0.3333,0.3333));
+					panelCurve.points.push(new THREE.Vector2(0.6666,0.6666));
+					panelCurve.points.push(new THREE.Vector2(1,1));
+					console.log(pathCurve);
+					console.log(panelCurve);
+					
+					panelScene=new THREE.Scene();		
+					panelCamera = new THREE.PerspectiveCamera( 45, 1, 0.025, 2000 );
+					//panelCamera = new THREE.OrthographicCamera(-0.2,1.2,1.2,-0.2,0.1,5);
+					//panelCamera = new THREE.OrthographicCamera(-1,1,1,-1,0.05,10);
+					panelCamera.position.set( 0.5,1.5,0.5 );
+					panelCamera.lookAt(new THREE.Vector3(0.5,0,0.50001));
+					panelCamera.updateProjectionMatrix();
 				}
-				*/
+				
+				//panel coordinates
+				{
+					var geometry = new THREE.Geometry();
+					geometry.vertices.push(new THREE.Vector3(-0.1,0,0));
+					geometry.vertices.push(new THREE.Vector3(1.1,0,0));
+					geometry.vertices.push(new THREE.Vector3(0,0,-0.1));
+					geometry.vertices.push(new THREE.Vector3(0,0,1.1));
+					var material = new THREE.LineBasicMaterial( { color: 0xb3aca4, opacity: 1, linewidth:3 } );
+					var line = new THREE.Line( geometry, material );
+					line.type=THREE.LinePieces;
+					panelScene.add( line );
+
+					var sphere=new THREE.Mesh(new THREE.SphereGeometry(0.03, 24, 24 ),new THREE.MeshBasicMaterial( { color: 0xe32429,overdraw:true } ));
+					sphere.position.x=0
+					sphere.position.y=0;
+					sphere.position.z=0;
+					panelScene.add(sphere);
+				}
 
 				//stats
 				{
@@ -170,12 +185,20 @@
 			}
 
 			function onWindowResize() {
-				o_width=window.innerWidth;
+				o_width=window.innerWidth*0.618;
 			   	o_height=window.innerHeight;
 				camera.aspect = o_width/o_height;
 				camera.updateProjectionMatrix();
 				//renderer.setSize( window.innerWidth, window.innerHeight );
 				renderer.setSize( o_width, o_height);
+
+				panelR.setSize( window.innerWidth-o_width, o_height*(1-0.618));
+				panelR.domElement.style.top= '0px';
+				var str=o_width.toString();
+				str+='px';
+				panelR.domElement.style.left = str;
+				panelCamera.aspect = o_width/o_height;
+				panelCamera.updateProjectionMatrix();
 			}
 			function animate() {
 				requestAnimationFrame( animate );
@@ -237,11 +260,12 @@
 					arm2Step=-arm2Step;
 				}
 
-				rotateArm1(arm1G.angle+arm1Step);
-				rotateArm2(arm2G.angle+arm2Step);
-				rotateTrunk(trunkG.angle+trunkStep);
-				balanceHammer();
+				//rotateArm1(arm1G.angle+arm1Step);
+				//rotateArm2(arm2G.angle+arm2Step);
+				//rotateTrunk(trunkG.angle+trunkStep);
+				//balanceHammer();
 				renderer.render( scene, camera );
+				panelR.render(panelScene,panelCamera);
 			}
 
 			//Rotate Objects
@@ -303,18 +327,36 @@
 				return new THREE.Vector2(pos.x,pos.z);
 			}
 
+			function getPanelPos(event){
+				var eleLeft=panelR.domElement.offsetLeft;
+				var eleTop=panelR.domElement.offsetTop;
+				var eleX=(event.clientX-eleLeft)/(window.innerWidth-o_width)*2-1;
+				var eleY=(event.clientY-eleTop)/o_height(1-0.618)*(-2)+1;
+				var vector = new THREE.Vector3(eleX,eleY,0.5 );
+				projector.unprojectVector( vector, panelCamera );
+				var dir = vector.sub( panelCamera.position ).normalize();
+				var ray = new THREE.Ray( panelCamera.position, dir );
+				var distance = - panelCamera.position.y / dir.y;
+				var pos = panelCamera.position.clone().add( dir.multiplyScalar( distance));
+				return new THREE.Vector2(pos.x,pos.z);
+			}
+
 			function onMouseDown(event){
 				var pos=getGridPos(event);
 				if(event.button==0){
 						var i;
 						for(i=0;i<pathCurve.points.length;i++){
-							console.log(pos.distanceTo(pathCurve.points[i]));
 							if(pos.distanceTo(pathCurve.points[i])<pathCurve.pointRadius){
-								pathCurve.pointClicked=true;
+								pathCurve.mouseDown=true;
 								pathCurve.pointPos=i;
-								console.log("pont clicked", i);
+								console.log('mousedown at', i);
 								break;
 							}
+						}
+						//delete points
+						if(pathCurve.deleteStatus&&pathCurve.mouseDown){
+							pathCurve.points.splice(pathCurve.pointPos,1);
+							pathCurve.draw(scene);
 						}
 				}
 				//add point	
@@ -324,6 +366,25 @@
 						pathCurve.draw(scene);
 					}
 				}
+			}
+			renderer.domElement.addEventListener('mousemove', onMouseMove, false);
+			function onMouseMove(event){
+				var pos=getGridPos(event);
+				//move points
+				if(pathCurve.mouseDown && pos.x>=-1 && pos.x<=1 && pos.y>=-1 && pos.y<=1 && pos.distanceTo(new THREE.Vector2(0,0)) > 0.3){
+					controls.userRotate=0;
+					pathCurve.points[pathCurve.pointPos].set(pos.x,pos.y);
+					pathCurve.draw(scene);
+				}
+			}
+			renderer.domElement.addEventListener('mouseup', onMouseUp, false);
+			function onMouseUp(event){
+				var pos=getGridPos(event);
+				if(pathCurve.mouseDown){
+					pathCurve.mouseDown=0;
+					pathCurve.pointPos=-1;
+				}
+				controls.userRotate=1;
 			}
 		</script>
 	</body>

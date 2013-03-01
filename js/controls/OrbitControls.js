@@ -227,6 +227,8 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 	function onMouseMove( event ) {
 
+		if ( !scope.userRotate ) return;
+
 		event.preventDefault();
 
 		if ( state === STATE.ROTATE ) {

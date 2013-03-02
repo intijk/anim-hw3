@@ -11,6 +11,21 @@
 				margin: 0px;
 				overflow: hidden;
 			}
+			.btn{
+				position:absolute;
+				top:200px;
+				left:800px;
+				width:200px;
+				padding:0px;
+				margin:0px;
+				background-color:#e2d8ce;
+			}
+			.btnImg{
+				padding:0px;
+				margin:0px;
+			}
+
+
 		</style>
 	</head>
 	<body>
@@ -19,8 +34,47 @@
 		<script src="js/libs/stats.min.js"></script>
 		<script src="js/controls/OrbitControls.js"></script>
 		<script src="js/glMatrix.min.js"></script>
-
 		<script src="js/curve.js"></script>
+		<button class="btn" type="button" id="clear" onclick="clearPathCurvePoints()"/>
+			<img class="btnImg" src="image/clear.png" id="clearImg"></img>
+		</button>
+
+		<button class="btn" type="button" id="delete" onclick="deletePathCurvePoints()"/>
+			<img class="btnImg" src="image/delete.png" id="deleteImg"></img>
+		</button>
+
+		<button class="btn" type="button" id="playOrPause" onclick="playOrPause()"/>
+			<img class="btnImg" src="image/play.png" id="playPauseImg"></img>
+		</button>
+
+		<button class="btn" type="button" id="stop" onclick="stop()"/>
+			<img class="btnImg" src="image/stop.png" id="stopImg"></img>
+		</button>
+
+		<button class="btn" type="button" id="view1" onclick="setView(1)"/>
+			<img class="btnImg" src="image/view1.png" id="view1Img"></img>
+		</button>
+
+		<button class="btn" type="button" id="view2" onclick="setView(2)"/>
+			<img class="btnImg" src="image/view2.png" id="view2Img"></img>
+		</button>
+
+		<button class="btn" type="button" id="view3" onclick="setView(3)"/>
+			<img class="btnImg" src="image/view3.png" id="view3Img"></img>
+		</button>
+
+		<button class="btn" type="button" id="view4" onclick="setView(4)"/>
+			<img class="btnImg" src="image/view4.png" id="view4Img"></img>
+		</button>
+
+		<button class="btn" type="button" id="view5" onclick="setView(5)"/>
+			<img class="btnImg" src="image/view5.png" id="view5Img"></img>
+		</button>
+
+		<button class="btn" type="button" id="view6" onclick="setView(6)"/>
+			<img class="btnImg" src="image/view6.png" id="view6Img"></img>
+		</button> 
+
 		<script>
 			var loader, base, trunk, arm1, arm2, hammer;
 			var container, stats;
@@ -31,7 +85,8 @@
 			var pathCurve=new Curve();
 			var controls;
 			var panelCurve=new Curve();
-			var panelR,panelScene,panelCamera;
+			var panelR,panelScene,panelCamera,panelWidth,panelHeight;
+			
 
 			init();
 			animate();
@@ -42,12 +97,10 @@
 
 				o_width=window.innerWidth*0.618;
 				o_height=window.innerHeight;
-				//camera.position.set( 0, 200, 800 );
 				{
 					camera = new THREE.PerspectiveCamera( 45, o_width / o_height, 0.025, 2000 );
-					camera.position.set( -0.5, 2, 2.5 );
-					//camera.position.set( 0,0,1);
-					camera.updateProjectionMatrix();
+					//camera = new THREE.OrthographicCamera(-1,1,1,-1);
+					setView(1);
 					controls = new THREE.OrbitControls( camera );
 					controls.addEventListener( 'change', render );
 					window.addEventListener( 'resize', onWindowResize, false );
@@ -129,29 +182,29 @@
 				{
 					panelR=new THREE.CanvasRenderer();
 					panelR = new THREE.WebGLRenderer();
-					panelR.setSize( window.innerWidth-o_width, o_height*(1-0.618));
-					panelR.domElement.style.position = 'absolute';
-					panelR.domElement.style.top= '0px';
-					var str=o_width.toString();
-					str+='px';
-					panelR.domElement.style.left = str;
+					//background
 					panelR.domElement.style.backgroundColor="#e8dfd6";
-					container.appendChild(panelR.domElement );
 
+
+					//curve initial points
 					panelCurve.points.push(new THREE.Vector2(0,0));
 					panelCurve.points.push(new THREE.Vector2(0.3333,0.3333));
 					panelCurve.points.push(new THREE.Vector2(0.6666,0.6666));
 					panelCurve.points.push(new THREE.Vector2(1,1));
-					console.log(pathCurve);
-					console.log(panelCurve);
-					
+
+
+					//panelScene	
 					panelScene=new THREE.Scene();		
-					panelCamera = new THREE.PerspectiveCamera( 45, 1, 0.025, 2000 );
-					//panelCamera = new THREE.OrthographicCamera(-0.2,1.2,1.2,-0.2,0.1,5);
-					//panelCamera = new THREE.OrthographicCamera(-1,1,1,-1,0.05,10);
-					panelCamera.position.set( 0.5,1.5,0.5 );
-					panelCamera.lookAt(new THREE.Vector3(0.5,0,0.50001));
+					//panelCamera
+					panelCamera = new THREE.OrthographicCamera(-1,1,o_width/o_height,-1*o_width/o_height);
+					panelCamera.position.set(0,2,0);
+					panelCamera.lookAt(new THREE.Vector3(0,0,0));
 					panelCamera.updateProjectionMatrix();
+					resizePanel();
+
+					//add
+					container.appendChild(panelR.domElement );
+
 				}
 				
 				//panel coordinates
@@ -182,24 +235,119 @@
 					container.appendChild(stats.domElement);
 				}
 
+				//buttons
+				resizeButtons();					
+			}
+			function resizeButtons(){
+				var bWidth=(1-0.618)*window.innerWidth/6;
+				var bHeight=bWidth;
+				var imgWidth=bWidth-4;
+				var imgHeight=imgWidth;
+				$('.btn').css("width",bWidth);
+				$('.btn').css("height",bHeight);
+				$('.btnImg').css("width",imgWidth);
+				$('.btnImg').css("height",imgHeight);
+				var topB=o_height*(1-0.618);
+				var leftB=o_width;
 
+				$('#clear').css("top",topB+bHeight);
+				$('#clear').css("left",leftB);
+
+				$('#delete').css("top",topB+bHeight);
+				$('#delete').css("left",leftB+bWidth*1);
+
+				$('#playOrPause').css("top",topB+bHeight);
+				$('#playOrPause').css("left",leftB+bWidth*2);
+
+				$('#stop').css("top",topB+bHeight);
+				$('#stop').css("left",leftB+bWidth*3);
+				//views
+				$('#view1').css("top",topB);
+				$('#view1').css("left",leftB+bWidth*0);
+
+				$('#view2').css("top",topB);
+				$('#view2').css("left",leftB+bWidth*1);
+
+				$('#view3').css("top",topB);
+				$('#view3').css("left",leftB+bWidth*2);
+
+				$('#view4').css("top",topB);
+				$('#view4').css("left",leftB+bWidth*3);
+
+				$('#view5').css("top",topB);
+				$('#view5').css("left",leftB+bWidth*4);
+
+				$('#view6').css("top",topB);
+				$('#view6').css("left",leftB+bWidth*5);
+
+		
+			}
+			function clearPathCurvePoints(){
+				pathCurve.points=[];
+				pathCurve.draw(scene);
+			}
+			function deletePathCurvePoints(){
+				if(pathCurve.deleteStatus==undefined || pathCurve.deleteStatus==0){
+					pathCurve.deleteStatus=1;
+					$('#deleteImg').attr("src", "image/deleteShadow.png");
+				}else{
+					pathCurve.deleteStatus=1-pathCurve.deleteStatus;
+					$('#deleteImg').attr("src", "image/delete.png");
+				}
+			}
+			function playOrPause(){
 			}
 
-			function onWindowResize() {
-				o_width=window.innerWidth*0.618;
-			   	o_height=window.innerHeight;
-				camera.aspect = o_width/o_height;
-				camera.updateProjectionMatrix();
-				//renderer.setSize( window.innerWidth, window.innerHeight );
-				renderer.setSize( o_width, o_height);
+			function setView(n){
+				if(n==1){
+					camera.position.set(-2,2,2);
+					camera.updateProjectionMatrix();
+				}else if(n==2){
+					camera.position.set(0,4,0);
+					camera.updateProjectionMatrix();
+				}else if(n==3){
+					camera.position.set(0,0,4);
+					camera.updateProjectionMatrix();
+				}else if(n==4){
+					camera.position.set(0,0,-4);
+					camera.updateProjectionMatrix();
+				}else if(n==5){
+					camera.position.set(-4,0,0);
+					camera.updateProjectionMatrix();
+				}else if(n==6){
+					camera.position.set(4,0,0);
+					camera.updateProjectionMatrix();
+				}
 
-				panelR.setSize( window.innerWidth-o_width, o_height*(1-0.618));
+			}
+			function resizePanel(){
+				panelWidth=window.innerWidth-o_width;
+				panelHeight=o_height*(1-0.618);
+
+				//panelR.setSize( window.innerWidth-o_width, o_height*(1-0.618));
+				//position
+				panelR.domElement.style.position = 'absolute';
 				panelR.domElement.style.top= '0px';
 				var str=o_width.toString();
 				str+='px';
 				panelR.domElement.style.left = str;
-				panelCamera.aspect = o_width/o_height;
+				//size
+				panelCamera.aspect=panelWidth/panelHeight;
 				panelCamera.updateProjectionMatrix();
+				panelR.setSize( panelWidth, panelHeight);
+				//panelCamera.aspect = 1;
+				//panelCamera.updateProjectionMatrix();
+
+			}
+			function onWindowResize() {
+				o_width=window.innerWidth*0.618;
+			   	o_height=window.innerHeight;
+				resizeButtons();
+				resizePanel();
+
+				camera.aspect = o_width/o_height;
+				camera.updateProjectionMatrix();
+				renderer.setSize( o_width, o_height);
 			}
 			function animate() {
 				requestAnimationFrame( animate );
@@ -358,6 +506,8 @@
 						if(pathCurve.deleteStatus&&pathCurve.mouseDown){
 							pathCurve.points.splice(pathCurve.pointPos,1);
 							pathCurve.draw(scene);
+							pathCurve.mouseDown=false;
+							pathCurve.pointPos=-1;
 						}
 				}
 				//add point	
@@ -376,6 +526,7 @@
 					controls.userRotate=0;
 					pathCurve.points[pathCurve.pointPos].set(pos.x,pos.y);
 					pathCurve.draw(scene);
+					renderer.domElement.style.cursor="move";
 				}
 			}
 			renderer.domElement.addEventListener('mouseup', onMouseUp, false);
@@ -384,6 +535,7 @@
 				if(pathCurve.mouseDown){
 					pathCurve.mouseDown=0;
 					pathCurve.pointPos=-1;
+					renderer.domElement.style.cursor="default";
 				}
 				controls.userRotate=1;
 			}

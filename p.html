@@ -44,7 +44,7 @@
 		</button>
 
 		<button class="btn" type="button" id="playOrPause" onclick="playOrPause()"/>
-			<img class="btnImg" src="image/play.png" id="playPauseImg"></img>
+			<img class="btnImg" src="image/play.png" id="playOrPauseImg"></img>
 		</button>
 
 		<button class="btn" type="button" id="stop" onclick="stop()"/>
@@ -86,6 +86,12 @@
 			var controls;
 			var panelCurve=new Curve();
 			var panelR,panelScene,panelCamera,panelWidth,panelHeight;
+			var panelPointer,panelFloat;
+			var timeT=0,timeStep=1/(60*5),prevTimeT;
+			var player={};
+			player.status="Stop";
+			var ball,ballRadius=0.08,ballRotateX=0,ballRotateZ=0,ballPrevPos=new THREE.Vector3();
+
 			
 
 			init();
@@ -101,10 +107,7 @@
 					camera = new THREE.PerspectiveCamera( 45, o_width / o_height, 0.025, 2000 );
 					//camera = new THREE.OrthographicCamera(-1,1,1,-1);
 					setView(1);
-					controls = new THREE.OrbitControls( camera );
-					controls.addEventListener( 'change', render );
 					window.addEventListener( 'resize', onWindowResize, false );
-					//controls.userRotate=1;
 				}
 
 				scene = new THREE.Scene();
@@ -177,6 +180,8 @@
 					renderer.domElement.style.backgroundColor="#e8dfd6";
 					container.appendChild( renderer.domElement );
 
+					controls = new THREE.OrbitControls( camera , renderer.domElement);
+					controls.addEventListener( 'change', render );
 				}
 				//panel
 				{
@@ -193,18 +198,14 @@
 					panelCurve.points.push(new THREE.Vector2(1,1));
 
 
-					//panelScene	
+					panelWidth=(window.innerWidth-o_width);
+					panelHeight=o_height*(1-0.618);
 					panelScene=new THREE.Scene();		
-					//panelCamera
-					panelCamera = new THREE.OrthographicCamera(-1,1,o_width/o_height,-1*o_width/o_height);
-					panelCamera.position.set(0,2,0);
-					panelCamera.lookAt(new THREE.Vector3(0,0,0));
-					panelCamera.updateProjectionMatrix();
+					panelCamera = new THREE.PerspectiveCamera( 45, o_width / o_height, 0.025, 2000 );
 					resizePanel();
+					panelCurve.draw(panelScene);
 
-					//add
 					container.appendChild(panelR.domElement );
-
 				}
 				
 				//panel coordinates
@@ -212,19 +213,58 @@
 
 					var geometry = new THREE.Geometry();
 					geometry.vertices.push(new THREE.Vector3(-0.1,0,0));
-					geometry.vertices.push(new THREE.Vector3(1.1,0,0));
+					geometry.vertices.push(new THREE.Vector3(1.2,0,0));
 					geometry.vertices.push(new THREE.Vector3(0,0,-0.1));
 					geometry.vertices.push(new THREE.Vector3(0,0,1.1));
-					var material = new THREE.LineBasicMaterial( { color: 0xb3aca4, opacity: 1, linewidth:3 } );
+					var material = new THREE.LineBasicMaterial( { color: 0xb3aca4, opacity: 1, linewidth:1 } );
 					var line = new THREE.Line( geometry, material );
 					line.type=THREE.LinePieces;
 					panelScene.add( line );
+					
 
-					var sphere=new THREE.Mesh(new THREE.SphereGeometry(0.03, 24, 24 ),new THREE.MeshBasicMaterial( { color: 0xe32429,overdraw:true } ));
+					panelPointer=new THREE.Object3D();	
+					var sphere=new THREE.Mesh(new THREE.SphereGeometry(0.042, 24, 24 ),new THREE.MeshBasicMaterial( { color: 0x0173ad,overdraw:true } ));
 					sphere.position.x=0
 					sphere.position.y=0;
 					sphere.position.z=0;
-					panelScene.add(sphere);
+					panelPointer.add(sphere);
+
+					geometry = new THREE.Geometry();
+					geometry.vertices=[];
+					geometry.vertices.push(new THREE.Vector3(0,0,0));
+					geometry.vertices.push(new THREE.Vector3(0,0,0.1));
+					material = new THREE.LineBasicMaterial( { color: 0x0173ad, opacity: 1, linewidth:1 } );
+					line = new THREE.Line( geometry, material );
+					panelPointer.add(line);
+					panelScene.add(panelPointer);
+
+					panelFloat=new THREE.Mesh(new THREE.SphereGeometry(0.038, 24, 24 ),new THREE.MeshBasicMaterial( { color: 0x0173ad,overdraw:true } ));
+					panelFloat.position.x=0;
+					panelFloat.position.y=0;
+					panelFloat.position.z=0;
+
+					panelScene.add(panelFloat);
+
+				}
+				//ball
+				{
+					var earthTexture = new THREE.Texture();
+					var eLoader = new THREE.ImageLoader();
+
+					eLoader.addEventListener( 'load', function ( event ) {
+						earthTexture.image = event.content;
+						earthTexture.needsUpdate = true;
+					} );
+
+					eLoader.load( 'image/land_ocean_ice_cloud_512.jpg' );
+
+					var geometry = new THREE.SphereGeometry( ballRadius, 30, 30 );
+					var material = new THREE.MeshBasicMaterial( { map: earthTexture, overdraw: true } );
+
+					ball = new THREE.Mesh( geometry, material );
+					resetBallPos();
+					scene.add( ball );
+
 				}
 
 				//stats
@@ -237,6 +277,11 @@
 
 				//buttons
 				resizeButtons();					
+			}
+
+			function resetBallPos(){
+				ball.position.set(-1,ballRadius,-1);
+				ballPrevPos.set(-1,ballRadius,-1);
 			}
 			function resizeButtons(){
 				var bWidth=(1-0.618)*window.innerWidth/6;
@@ -285,6 +330,7 @@
 			function clearPathCurvePoints(){
 				pathCurve.points=[];
 				pathCurve.draw(scene);
+				resetBallPos();
 			}
 			function deletePathCurvePoints(){
 				if(pathCurve.deleteStatus==undefined || pathCurve.deleteStatus==0){
@@ -321,22 +367,27 @@
 
 			}
 			function resizePanel(){
-				panelWidth=window.innerWidth-o_width;
+				panelWidth=(window.innerWidth-o_width);
 				panelHeight=o_height*(1-0.618);
 
-				//panelR.setSize( window.innerWidth-o_width, o_height*(1-0.618));
 				//position
 				panelR.domElement.style.position = 'absolute';
 				panelR.domElement.style.top= '0px';
 				var str=o_width.toString();
 				str+='px';
 				panelR.domElement.style.left = str;
+
 				//size
+				panelR.setSize( panelWidth, panelHeight);
+
+				//camera
+				panelCamera.position.set(0.5,-1.7,0.5);
+				panelCamera.lookAt(new THREE.Vector3(0.5,0,0.5));
+				panelCamera.updateProjectionMatrix();
 				panelCamera.aspect=panelWidth/panelHeight;
 				panelCamera.updateProjectionMatrix();
-				panelR.setSize( panelWidth, panelHeight);
-				//panelCamera.aspect = 1;
-				//panelCamera.updateProjectionMatrix();
+				panelCamera.rotation.set(1.5707963267948966,0,0);
+				panelCamera.updateMatrix();
 
 			}
 			function onWindowResize() {
@@ -413,8 +464,35 @@
 				//rotateArm2(arm2G.angle+arm2Step);
 				//rotateTrunk(trunkG.angle+trunkStep);
 				//balanceHammer();
+
+				if(player.status=="Play"){
+					prevTimeT=timeT;
+					timeT+=timeStep;	
+					if(timeT>1)timeT=0;
+					updatePointer();
+				}
+				updateBall();
+
 				renderer.render( scene, camera );
 				panelR.render(panelScene,panelCamera);
+			}
+			function updateBall(){
+				var percent=panelCurve.getPointX(timeT).y
+				var pos=pathCurve.getPointAt(pathCurve.getLength()*percent);
+				if(pos==0){
+					return;	
+				}
+				
+				ballPrevPos.x=ball.position.x;
+				ballPrevPos.z=ball.position.z;
+
+				ballRotateZ+=-1*(pos.x-ballPrevPos.x)/ballRadius;
+				ballRotateX+=(pos.y-ballPrevPos.z)/ballRadius;
+				console.log(ballRotateX);
+				console.log(ballRotateZ);
+				
+				ball.position.set(pos.x,ballRadius,pos.y);
+				ball.rotation.set(ballRotateX,0,ballRotateZ);
 			}
 
 			//Rotate Objects
@@ -475,21 +553,6 @@
 				var pos = camera.position.clone().add( dir.multiplyScalar( distance));
 				return new THREE.Vector2(pos.x,pos.z);
 			}
-
-			function getPanelPos(event){
-				var eleLeft=panelR.domElement.offsetLeft;
-				var eleTop=panelR.domElement.offsetTop;
-				var eleX=(event.clientX-eleLeft)/(window.innerWidth-o_width)*2-1;
-				var eleY=(event.clientY-eleTop)/o_height(1-0.618)*(-2)+1;
-				var vector = new THREE.Vector3(eleX,eleY,0.5 );
-				projector.unprojectVector( vector, panelCamera );
-				var dir = vector.sub( panelCamera.position ).normalize();
-				var ray = new THREE.Ray( panelCamera.position, dir );
-				var distance = - panelCamera.position.y / dir.y;
-				var pos = panelCamera.position.clone().add( dir.multiplyScalar( distance));
-				return new THREE.Vector2(pos.x,pos.z);
-			}
-
 			function onMouseDown(event){
 				var pos=getGridPos(event);
 				if(event.button==0){
@@ -539,6 +602,99 @@
 				}
 				controls.userRotate=1;
 			}
+
+
+
+
+			function getPanelPos(event){
+				var eleLeft=panelR.domElement.offsetLeft;
+				var eleTop=panelR.domElement.offsetTop;
+				var eleX=(event.clientX-eleLeft)/panelWidth*2-1;
+				var eleY=(event.clientY-eleTop)/panelHeight*(-2)+1;
+				var vector = new THREE.Vector3(eleX,eleY,0.5 );
+				projector.unprojectVector( vector, panelCamera );
+				var dir = vector.sub( panelCamera.position ).normalize();
+				var ray = new THREE.Ray( panelCamera.position, dir );
+				var distance = - panelCamera.position.y / dir.y;
+				var pos = panelCamera.position.clone().add( dir.multiplyScalar( distance));
+				return new THREE.Vector2(pos.x,pos.z);
+			}
+
+			panelR.domElement.addEventListener('mousedown', panelOnMouseDown, false);
+			function panelOnMouseDown(event){
+				var pos=getPanelPos(event);
+				if(event.button==0){
+						var i;
+						for(i=1;i<panelCurve.points.length-1;i++){
+							if(pos.distanceTo(panelCurve.points[i])<panelCurve.pointRadius){
+								panelCurve.mouseDown=true;
+								panelCurve.pointPos=i;
+								console.log('mousedown at', i);
+								return ;
+								break;
+							}
+						}
+						if(pos.distanceTo(panelPointer.position)<panelCurve.pointRadius){
+							panelPointer.mouseDown=true;
+							return ;
+						}
+				}
+			}
+
+			panelR.domElement.addEventListener('mousemove', panelOnMouseMove, false);
+			function panelOnMouseMove(event){
+				var pos=getPanelPos(event);
+				if(panelCurve.mouseDown){
+					panelR.domElement.style.cursor="move";
+					var posBack=panelCurve.points[panelCurve.pointPos].clone();
+					panelCurve.points[panelCurve.pointPos].set(pos.x,pos.y);
+					var border=panelCurve.getBorder();
+					if(panelCurve.isXAsc() && border.top<=1 && border.bottom>=0){
+						panelCurve.draw(panelScene);
+						updatePointer();
+					}else{
+						panelCurve.points[panelCurve.pointPos]=posBack;
+						panelCurve.draw(panelScene);
+					}
+				}else if(panelPointer.mouseDown && pos.x>=0 && pos.x<=1){
+					timeT=pos.x;
+					updatePointer();
+				}
+			}
+			function updatePointer(){
+				panelPointer.position.x=timeT;
+				panelFloat.position.set(timeT,0, panelCurve.getPointX(timeT).y);
+			}
+
+			panelR.domElement.addEventListener('mouseup', panelOnMouseUp, false);
+			function panelOnMouseUp(event){
+				var pos=getPanelPos(event);
+				if(panelCurve.mouseDown){
+					panelCurve.mouseDown=0;
+					panelCurve.pointPos=-1;
+					panelR.domElement.style.cursor="default";
+				}else if(panelPointer.mouseDown){
+					panelPointer.mouseDown=0;
+				}
+			}
+
+			function playOrPause(){
+				if(player.status=="Stop" || player.status=="Pause"){
+					player.status="Play";
+					$('#playOrPauseImg').attr("src","image/pause.png");
+				}else if(player.status=="Play"){
+					$('#playOrPauseImg').attr("src","image/play.png");
+					player.status="Pause";
+				}
+				console.log(player.status);
+			}
+			function stop(){
+				player.status="Stop";
+				console.log(player.status);
+				ballRotateX=0;
+				ballRotateZ=0;
+			}
+
 		</script>
 	</body>
 </html>

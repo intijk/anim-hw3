@@ -472,6 +472,7 @@
 					updatePointer();
 				}
 				updateBall();
+				updatePointer();
 
 				renderer.render( scene, camera );
 				panelR.render(panelScene,panelCamera);
@@ -482,16 +483,36 @@
 				if(pos==0){
 					return;	
 				}
-				
+				//position
 				ballPrevPos.x=ball.position.x;
 				ballPrevPos.z=ball.position.z;
-
-				ballRotateZ+=-1*(pos.x-ballPrevPos.x)/ballRadius;
-				ballRotateX+=(pos.y-ballPrevPos.z)/ballRadius;
-				console.log(ballRotateX);
-				console.log(ballRotateZ);
-				
 				ball.position.set(pos.x,ballRadius,pos.y);
+				
+				//rotation
+				var dx=ball.position.x-ballPrevPos.x;
+				var dz=ball.position.z-ballPrevPos.z;
+				var dd=Math.sqrt(dx*dx+dz*dz);
+				var du=dd/ballRadius;
+				console.log(dd,du,ballRadius,dz);
+				var dxu;
+				var dzu;
+
+				if(dz==0){
+					dxu=0;
+				}else{
+					dxu=dd/ballRadius*dz/dd;
+				}
+
+				if(dx==0){
+					dzu=0;
+				}else{
+					dzu=-1*dd/ballRadius*dx/dd;
+				}
+
+				ballRotateZ+=dzu;
+				ballRotateX+=dxu;
+				console.log(ballRotateX);
+
 				ball.rotation.set(ballRotateX,0,ballRotateZ);
 			}
 
@@ -691,10 +712,11 @@
 			function stop(){
 				player.status="Stop";
 				console.log(player.status);
+				timeT=0;
 				ballRotateX=0;
 				ballRotateZ=0;
+				$('#playOrPauseImg').attr("src","image/play.png");
 			}
-
 		</script>
 	</body>
 </html>

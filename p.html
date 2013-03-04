@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 	<head>
-		<title>three.js canvas - materials</title>
+		<title>Computer Animation Homework 2</title>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 		<style>
@@ -89,8 +89,16 @@
 			var panelPointer,panelFloat;
 			var timeT=0,timeStep=1/(60*5),prevTimeT;
 			var player={};
+			var pillarRadius=0.03;
 			player.status="Stop";
 			var ball,ballRadius=0.08,ballRotateX=0,ballRotateZ=0,ballPrevPos=new THREE.Vector3();
+			var script;
+			var pillarHeight=0.2;
+			var pillars;
+			var trunkHeight=0.176;
+			var hammerHeight=0.176*0.76;
+			var trunkRadius=0.13;
+			var f;
 
 			
 
@@ -143,7 +151,7 @@
 					loader.load( 'obj/robot/trunk.js', function ( geometry ) {
 						trunk = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial( { overdraw: true } ) );
 						trunk.pivot=new THREE.Vector3(0,0,0);
-						trunk.axis=new THREE.Vector3(0,1,0);
+						trunk.axis=new THREE.Vector3(0,-1,0);
 						trunk.applyMatrix(m);
 					} );
 					loader.load( 'obj/robot/arm1.js', function ( geometry ) {
@@ -155,13 +163,13 @@
 					loader.load( 'obj/robot/arm2.js', function ( geometry ) {
 						arm2 = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial( { overdraw: true } ) );
 						arm2.pivot=new THREE.Vector3(-0.530,0.176,0);
-						arm2.axis=new THREE.Vector3(0,0,-1);
+						arm2.axis=new THREE.Vector3(0,0,1);
 						arm2.applyMatrix(m);
 					} );
 					loader.load( 'obj/robot/hammer.js', function ( geometry ) {
 						hammer = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial( { overdraw:true } ) );
 
-						hammer.pivot=new THREE.Vector3(-0.915,0.176,0);
+						hammer.pivot=new THREE.Vector3(-0.914,0.176,0);
 						hammer.axis=new THREE.Vector3(0,0,1);
 						hammer.applyMatrix(m);
 					} );
@@ -277,8 +285,26 @@
 
 				//buttons
 				resizeButtons();					
+				
+				updatePillars();
+
+				//script
+				updateScript();
+
+				
 			}
 
+			function updatePillars(){
+				/*
+				var i;
+				pillars=[];
+				for(i=1;i<pathCurve.points.length;i++){
+				pillars.push({
+					position:new Vector3(pathCurve.points[i].x,0,pathCurve.points[i].y),
+					height:pillarHeight,
+				});
+				*/
+			}
 			function resetBallPos(){
 				ball.position.set(-1,ballRadius,-1);
 				ballPrevPos.set(-1,ballRadius,-1);
@@ -331,6 +357,7 @@
 				pathCurve.points=[];
 				pathCurve.draw(scene);
 				resetBallPos();
+				updateScript();
 			}
 			function deletePathCurvePoints(){
 				if(pathCurve.deleteStatus==undefined || pathCurve.deleteStatus==0){
@@ -441,12 +468,14 @@
 					}
 					else return;
 				}
+				/*
 				scene.position.x=0
 				scene.position.y=0
 				scene.position.z=0
 				camera.lookAt( scene.position );
+				*/
 
-
+				/*free rotate for test
 				if(arm1Step>0 && arm1G.angle+arm1Step>90){
 					arm1Step=-arm1Step;
 				}
@@ -459,11 +488,16 @@
 				else if(arm2Step<0 && arm2Step+arm2G.angle<-120){
 					arm2Step=-arm2Step;
 				}
+				*/
+
 
 				//rotateArm1(arm1G.angle+arm1Step);
 				//rotateArm2(arm2G.angle+arm2Step);
 				//rotateTrunk(trunkG.angle+trunkStep);
 				//balanceHammer();
+				f=Math.round(timeT/timeStep);
+				trunkScript();
+				armScript();
 
 				if(player.status=="Play"){
 					prevTimeT=timeT;
@@ -476,6 +510,75 @@
 
 				renderer.render( scene, camera );
 				panelR.render(panelScene,panelCamera);
+			}
+			function trunkScript(){
+				rotateTrunk(script[f].trunkAngle+Math.PI);
+			}
+			function armScript(){
+				var h=script[f].height-trunkHeight+hammerHeight;
+				//h=-1*trunkHeight+hammerHeight;
+				var r=script[f].radius-trunkRadius;
+				if(h>0.24){
+					console.log("h>0.24");
+				}
+				var a1=0.4,a2=0.385;
+				var done=false;
+				var a,b;
+				var t,minT=99999999;
+				for(a=0;a<=Math.PI/2;a+=0.005){
+					t=Math.pow((Math.sin(a)*a1-h),2)+Math.pow((r-Math.cos(a)*a1),2)-a2*a2;
+					if(t>=-0.008 && t<=0.008){
+						done=true;
+						break;
+					}
+				}
+				if(!done){
+					script[f].able=false;
+					/*
+					console.log("cannot find a");
+					console.log("Cannot reach radius=",script[f].radius,"height=",script[f].height);
+					*/
+					balanceHammer();
+					return;
+				}
+				done=false;
+				for(b=0;b<2.8*Math.PI/3.0;b+=0.005){
+					k=a-b+Math.PI/2;
+					t=Math.pow((r-Math.sin(k)*a2),2)+Math.pow((h+Math.cos(k)*a2),2)-a1*a1;
+					if(t>=-0.008 && t<=0.008){
+						done=true;
+						break;
+					}
+				}
+				if(!done){
+					script[f].able=false;
+					/*
+					console.log("cannot find b");
+					console.log("Cannot reach radius=",script[f].radius,"height=",script[f].height);
+					*/
+					balanceHammer();
+					return;
+				}
+				rotateArm1(a);
+				rotateArm2(b);
+				balanceHammer();
+			}
+			function pillarScript(){
+				var f=Math.round(timeT/timeStep);
+				var i;
+				/*
+				for(i=0;i<pillars.
+				if(hammerRadius+pillarRadius<distance){
+					pillarheight=script[f].height;
+				}	
+				*/
+				/*
+				var geometry=new THREE.CylinderGeometry(pillarRadius, pillarRadius, pillarHeight/2, 24, 24, false)
+				var material=new THREE.MeshNormalMaterial( { overdraw: true  } ) ;
+				var pillar = new THREE.Mesh( geometry, material);
+
+				pillarA[0]=pillar;
+				*/
 			}
 			function updateBall(){
 				var percent=panelCurve.getPointX(timeT).y
@@ -493,7 +596,6 @@
 				var dz=ball.position.z-ballPrevPos.z;
 				var dd=Math.sqrt(dx*dx+dz*dz);
 				var du=dd/ballRadius;
-				console.log(dd,du,ballRadius,dz);
 				var dxu;
 				var dzu;
 
@@ -511,7 +613,6 @@
 
 				ballRotateZ+=dzu;
 				ballRotateX+=dxu;
-				console.log(ballRotateX);
 
 				ball.rotation.set(ballRotateX,0,ballRotateZ);
 			}
@@ -519,7 +620,6 @@
 			//Rotate Objects
 			function rotateTrunk(angle){
 				trunkG.angle=angle;
-				var angle=trunkG.angle/180*Math.PI;
 				trunkG.matrix.identity();
 				var m=new THREE.Matrix4();
 				m.rotateByAxis(trunk.axis, angle);
@@ -527,7 +627,6 @@
 			}
 			function rotateArm1(angle){
 				arm1G.angle=angle;
-				angle=arm1G.angle/180*Math.PI;
 				arm1G.matrix.identity();
 				var m=new THREE.Matrix4();
 				m.translate(arm1.pivot);
@@ -537,7 +636,6 @@
 			}
 			function rotateArm2(angle){
 				arm2G.angle=angle;
-				angle=arm2G.angle/180*Math.PI;
 				arm2G.matrix.identity();
 				var m=new THREE.Matrix4();
 				m.translate(arm2.pivot);
@@ -547,7 +645,6 @@
 			}
 			function rotateHammer(angle){
 				hammerG.angle=angle;
-				angle=hammerG.angle/180*Math.PI;
 				hammerG.matrix.identity();
 				var m=new THREE.Matrix4();
 				m.translate(hammer.pivot);
@@ -556,7 +653,7 @@
 				hammerG.applyMatrix(m);
 			}
 			function balanceHammer(){
-				rotateHammer(arm1G.angle+arm2G.angle);
+				rotateHammer(arm1G.angle-arm2G.angle);
 			}
 
 			//Tackle Interactive
@@ -582,7 +679,6 @@
 							if(pos.distanceTo(pathCurve.points[i])<pathCurve.pointRadius){
 								pathCurve.mouseDown=true;
 								pathCurve.pointPos=i;
-								console.log('mousedown at', i);
 								break;
 							}
 						}
@@ -592,6 +688,7 @@
 							pathCurve.draw(scene);
 							pathCurve.mouseDown=false;
 							pathCurve.pointPos=-1;
+							updateScript();
 						}
 				}
 				//add point	
@@ -599,6 +696,7 @@
 					if(pos.x>=-1 && pos.x<=1 && pos.y>=-1 && pos.y<=1 && pos.distanceTo(new THREE.Vector2(0,0)) > 0.3){
 						pathCurve.points.push(new THREE.Vector2(pos.x,pos.y));
 						pathCurve.draw(scene);
+						updateScript();
 					}
 				}
 			}
@@ -620,6 +718,7 @@
 					pathCurve.mouseDown=0;
 					pathCurve.pointPos=-1;
 					renderer.domElement.style.cursor="default";
+					updateScript();
 				}
 				controls.userRotate=1;
 			}
@@ -650,7 +749,6 @@
 							if(pos.distanceTo(panelCurve.points[i])<panelCurve.pointRadius){
 								panelCurve.mouseDown=true;
 								panelCurve.pointPos=i;
-								console.log('mousedown at', i);
 								return ;
 								break;
 							}
@@ -694,6 +792,7 @@
 					panelCurve.mouseDown=0;
 					panelCurve.pointPos=-1;
 					panelR.domElement.style.cursor="default";
+					updateScript();
 				}else if(panelPointer.mouseDown){
 					panelPointer.mouseDown=0;
 				}
@@ -707,15 +806,182 @@
 					$('#playOrPauseImg').attr("src","image/play.png");
 					player.status="Pause";
 				}
-				console.log(player.status);
 			}
 			function stop(){
 				player.status="Stop";
-				console.log(player.status);
 				timeT=0;
 				ballRotateX=0;
 				ballRotateZ=0;
 				$('#playOrPauseImg').attr("src","image/play.png");
+			}
+			function updateScript(){
+				console.log("updateScript");
+				var pathLength=pathCurve.getLength();
+				var t;
+				script=[];
+				for(t=0;t<=1;t+=timeStep){
+					script.push({
+						trunkAngle:0,
+						radius:0.6,
+						height:pillarHeight,
+						able:true,
+					});
+				}
+				//少于两个点退出
+				if(pathCurve.points.length<2){
+					return ;
+				}
+				//多于两个点初始化
+				var rotateList=getRotateList();
+				for(t=0;t<=1;t+=timeStep){
+					script[Math.round(t/timeStep)].trunkAngle=rotateList[0];
+					script[Math.round(t/timeStep)].radius=pathCurve.points[0].length();
+					script[Math.round(t/timeStep)].height=pillarHeight;
+					script[Math.round(t/timeStep)].able=true;
+				}
+
+				pathCurve.tList=[];
+				pathCurve.tList.push(0);
+				var i;
+				for(i=1;i<pathCurve.points.length;i++){
+					pathCurve.tList.push(999999);
+				}
+				var tPercent,pos;
+				var hammerRadius=0.2;
+				for(t=0;t<=1;t+=timeStep){
+					//得到时刻t，球在path上的percent
+					tPercent=panelCurve.getPointX(t).y;
+					//通过percent，得到球在path上的位置
+					pos=pathCurve.getPointAt(pathLength*tPercent);
+					for(i=1;i<pathCurve.points.length;i++){
+						d=pos.distanceTo(pathCurve.points[i]);
+						//如果该时球的位置和某个柱子的位置很近，那么该时刻柱子必须被砸下去, 柱子不能和球，也不能和锤子碰撞
+						if(d<ballRadius+Math.max(pillarRadius,hammerRadius)){
+							pathCurve.tList[i]=Math.min(pathCurve.tList[i],t);
+						}
+					}
+				}
+				//console.log("tList",pathCurve.tList);
+
+
+				pathCurve.pillars=[];
+				pathCurve.pillars.push({});
+				for(i=1;i<pathCurve.points.length;i++){
+					pathCurve.pillars.push({
+						pushedDown:false,
+						height:pillarHeight,
+					});
+				}
+
+					
+				var currentT=0;
+				var currentAngle=rotateList[0];
+				var currentHeight=script[0].height;
+				var currentRadius=script[0].radius;
+				var l=pathCurve.points.length;
+				var pillars=pathCurve.pillars
+				var tList=pathCurve.tList;
+				var points=pathCurve.points;
+				var minTime;
+				var target;
+				var pillarsLeft=l-1;
+				var oldTarget=0;
+				var timeSave=0;
+				var t=timeStep,f;
+				var oldTime=0;
+				var oldHeight=script[0].height;
+				while(pillarsLeft>0){
+					minTime=999999;
+					for(i=1;i<l;i++){
+						//如果已经被连带砸下了,那么就跳过这个柱子，去找下一个急需被砸下的。
+						if(!pillars[i].pushedDown && minTime>tList[i]){
+								minTime=tList[i];
+								target=i;
+						}
+					}
+					console.log("target",target);
+					var angle=getRotate(rotateList[oldTarget],rotateList[target]);
+					var dtime=(tList[target]-oldTime);
+					var moveTime=dtime*0.6;
+					var downTime=dtime*0.3;
+					var angleSpeed=angle/moveTime;
+					console.log("angle", angle,"dtime",dtime,"moveTime",moveTime,"downTime",downTime,"angleSpeed",angleSpeed);
+					//如果速度太慢，则修正为一个较快的速度.
+					if(Math.abs(angleSpeed)<3){
+						angleSpeed=angleSpeed/Math.abs(angleSpeed)*3;
+						moveTime=angle/angleSpeed;
+					}
+					//如果下压的时间太长，则修正为一个快的下压速度。
+					
+					if(downTime>0.08)downTime=0.08;
+					console.log("angle", angle,"dtime",dtime,"moveTime",moveTime,"downTime",downTime,"angleSpeed",angleSpeed);
+
+
+					//move stage
+					var oldf=Math.round((oldTime)/timeStep);
+					var newf=Math.round((oldTime+moveTime)/timeStep);
+					var f;
+					script[newf].height=pillarHeight;
+					script[newf].radius=points[target].length();
+					script[newf].trunkAngle=rotateList[oldTarget]+angle;
+					for(f=oldf+1;f<newf;f++){
+						script[f].height=oldHeight+(pillarHeight-oldHeight)*(f-oldf)/(newf-oldf);
+						script[f].radius=script[oldf].radius+(script[newf].radius-script[oldf].radius)*(f-oldf)/(newf-oldf);
+						script[f].trunkAngle=rotateList[oldTarget]+angle*(f-oldf)/(newf-oldf);
+						//console.log("angle/(newf-oldf)",angle/(newf-oldf),"(newf-oldf)",newf-oldf,"angle",angle,"newf",newf,"oldf",oldf);
+					}
+					//down stage
+					oldf=newf;
+					newf=Math.round((oldTime+moveTime+downTime)/timeStep);
+					script[newf].height=0;
+					script[newf].radius=script[oldf].radius;
+					script[newf].trunkAngle=script[oldf].trunkAngle;
+					for(f=oldf+1;f<newf;f++){
+						script[f].height=pillarHeight-pillarHeight*(f-oldf)/(newf-oldf);	
+						script[f].radius=script[oldf].radius;
+						script[f].trunkAngle=script[oldf].trunkAngle;
+					}
+
+					oldTime=oldTime+moveTime+downTime;
+					oldTarget=target;	
+					pillars[target].pushedDown=true;
+					pillarsLeft-=1;
+					oldHeight=0;
+				}
+								//console.log("脚本", script);
+				updatePillars();
+				return ;
+			}
+			function getRotate(a1,a2){
+				var da=Math.abs(a2-a1);
+				da=Math.min(da,2*Math.PI-da);
+				if(a2-da==a1){
+					direct=1;
+				}else if(a2+da==a1){
+					direct=-1;
+				}else if(2*Math.PI-(a2+da)==a1){
+					direct=1;
+				}else{
+					direct=-1;
+				}
+				return direct*da;
+			}
+			function getRotateList(){
+				//current angle=0
+				//for each point in curve , add the angle.
+				var vertices=pathCurve.points;
+				if(vertices.length<2)return 0;
+				var a1,a2;
+				var zero=new THREE.Vector2();
+				var rotateList=[];
+				for(i=0;i<vertices.length;i++){
+					a2=Math.acos(vertices[i].x/vertices[i].distanceTo(zero));
+					if(vertices[i].y<0){
+						a2*=-1;
+					}
+					rotateList.push(a2);
+				}
+				return rotateList;
 			}
 		</script>
 	</body>

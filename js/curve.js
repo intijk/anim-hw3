@@ -81,7 +81,7 @@ Curve.prototype.getPointAt=function(length){
 				currentL+=Math.sqrt((currentPos.x-prevPos.x)*(currentPos.x-prevPos.x)+(currentPos.y-prevPos.y)*(currentPos.y-prevPos.y))
 				prevPos.copy(currentPos);
 				currentPos.set(x,y);
-				if(currentL>length){
+				if(currentL>=length){
 					if(length-prevL>currentL-length){
 						return currentPos;
 					}else{

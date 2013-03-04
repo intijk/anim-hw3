@@ -94,7 +94,7 @@
 			var ball,ballRadius=0.08,ballRotateX=0,ballRotateZ=0,ballPrevPos=new THREE.Vector3();
 			var script;
 			var pillarHeight=0.2;
-			var pillars;
+			var pillars=[];
 			var trunkHeight=0.176;
 			var hammerHeight=0.176*0.76;
 			var trunkRadius=0.13;
@@ -295,15 +295,20 @@
 			}
 
 			function updatePillars(){
-				/*
 				var i;
+				for(i=0;i<pillars.length;i++){
+					scene.remove(pillars[i]);
+				}
 				pillars=[];
 				for(i=1;i<pathCurve.points.length;i++){
-				pillars.push({
-					position:new Vector3(pathCurve.points[i].x,0,pathCurve.points[i].y),
-					height:pillarHeight,
-				});
-				*/
+					var geometry=new THREE.CylinderGeometry(pillarRadius, pillarRadius, pillarHeight, 24, 24, false)
+					var material=new THREE.MeshNormalMaterial( { overdraw: true  } ) ;
+					var pillar = new THREE.Mesh( geometry, material);
+					pillar.position.set(pathCurve.points[i].x,pillarHeight/2,pathCurve.points[i].y);
+
+					pillars.push(pillar);
+					scene.add(pillars[pillars.length-1]);
+				}
 			}
 			function resetBallPos(){
 				ball.position.set(-1,ballRadius,-1);
@@ -498,6 +503,7 @@
 				f=Math.round(timeT/timeStep);
 				trunkScript();
 				armScript();
+				pillarScript();
 
 				if(player.status=="Play"){
 					prevTimeT=timeT;
@@ -518,9 +524,11 @@
 				var h=script[f].height-trunkHeight+hammerHeight;
 				//h=-1*trunkHeight+hammerHeight;
 				var r=script[f].radius-trunkRadius;
+				/*
 				if(h>0.24){
 					console.log("h>0.24");
 				}
+				*/
 				var a1=0.4,a2=0.385;
 				var done=false;
 				var a,b;
@@ -564,21 +572,23 @@
 				balanceHammer();
 			}
 			function pillarScript(){
-				var f=Math.round(timeT/timeStep);
-				var i;
-				/*
-				for(i=0;i<pillars.
-				if(hammerRadius+pillarRadius<distance){
-					pillarheight=script[f].height;
-				}	
-				*/
-				/*
-				var geometry=new THREE.CylinderGeometry(pillarRadius, pillarRadius, pillarHeight/2, 24, 24, false)
-				var material=new THREE.MeshNormalMaterial( { overdraw: true  } ) ;
-				var pillar = new THREE.Mesh( geometry, material);
+				if(f==0){
+					updatePillars();
+					return ;
+				}
+				for(i=0;i<pillars.length;i++){
+					if(script[f-1].pillarHeight[i+1]!=script[f].pillarHeight[i+1]){
+						scene.remove(pillars[i]);
+						var geometry=new THREE.CylinderGeometry(pillarRadius, pillarRadius, script[f].pillarHeight[i+1], 24, 24, false)
+						var material=new THREE.MeshNormalMaterial( { overdraw: true  } ) ;
+						var pillar = new THREE.Mesh( geometry, material);
+						pillar.position.set(pathCurve.points[i+1].x,script[f].pillarHeight[i+1]/2,pathCurve.points[i+1].y);
 
-				pillarA[0]=pillar;
-				*/
+						pillars[i]=pillar;
+						scene.add(pillars[i]);
+	
+					}
+				}
 			}
 			function updateBall(){
 				var percent=panelCurve.getPointX(timeT).y
@@ -825,6 +835,7 @@
 						radius:0.6,
 						height:pillarHeight,
 						able:true,
+						pillarHeight:[],
 					});
 				}
 				//少于两个点退出
@@ -838,6 +849,9 @@
 					script[Math.round(t/timeStep)].radius=pathCurve.points[0].length();
 					script[Math.round(t/timeStep)].height=pillarHeight;
 					script[Math.round(t/timeStep)].able=true;
+					for(j=0;j<pathCurve.points.length;j++){
+						script[Math.round(t/timeStep)].pillarHeight.push(pillarHeight);
+					}
 				}
 
 				pathCurve.tList=[];
@@ -861,18 +875,21 @@
 						}
 					}
 				}
+				
 				//console.log("tList",pathCurve.tList);
 
 
 				pathCurve.pillars=[];
-				pathCurve.pillars.push({});
+				pathCurve.pillars.push({
+					pushedDown:true,
+					height:0,
+				});
 				for(i=1;i<pathCurve.points.length;i++){
 					pathCurve.pillars.push({
 						pushedDown:false,
 						height:pillarHeight,
 					});
 				}
-
 					
 				var currentT=0;
 				var currentAngle=rotateList[0];
@@ -890,6 +907,7 @@
 				var t=timeStep,f;
 				var oldTime=0;
 				var oldHeight=script[0].height;
+				var i;
 				while(pillarsLeft>0){
 					minTime=999999;
 					for(i=1;i<l;i++){
@@ -899,7 +917,13 @@
 								target=i;
 						}
 					}
-					console.log("target",target);
+					var pCovered=[];
+					for(i=1;i<l;i++){
+						if(!pillars[i].pushedDown && points[i].distanceTo(points[target])<pillarRadius+hammerRadius){
+							pCovered.push(i);	
+						}
+					}
+					//console.log("oldTarget",oldTarget,"target",target);
 					var angle=getRotate(rotateList[oldTarget],rotateList[target]);
 					var dtime=(tList[target]-oldTime);
 					var moveTime=dtime*0.6;
@@ -921,14 +945,22 @@
 					var oldf=Math.round((oldTime)/timeStep);
 					var newf=Math.round((oldTime+moveTime)/timeStep);
 					var f;
+					//console.log(oldTime,moveTime,newf);
 					script[newf].height=pillarHeight;
 					script[newf].radius=points[target].length();
 					script[newf].trunkAngle=rotateList[oldTarget]+angle;
+					
 					for(f=oldf+1;f<newf;f++){
-						script[f].height=oldHeight+(pillarHeight-oldHeight)*(f-oldf)/(newf-oldf);
+						script[f].height=oldHeight+(pillarHeight+0.05-oldHeight)*(f-oldf)/(newf-oldf);
 						script[f].radius=script[oldf].radius+(script[newf].radius-script[oldf].radius)*(f-oldf)/(newf-oldf);
 						script[f].trunkAngle=rotateList[oldTarget]+angle*(f-oldf)/(newf-oldf);
 						//console.log("angle/(newf-oldf)",angle/(newf-oldf),"(newf-oldf)",newf-oldf,"angle",angle,"newf",newf,"oldf",oldf);
+					}
+					for(f=oldf;f<=newf;f++){
+						f=Math.max(1,f);
+						for(j=0;j<l;j++){
+							script[f].pillarHeight[j]=script[f-1].pillarHeight[j];
+						}
 					}
 					//down stage
 					oldf=newf;
@@ -936,17 +968,31 @@
 					script[newf].height=0;
 					script[newf].radius=script[oldf].radius;
 					script[newf].trunkAngle=script[oldf].trunkAngle;
+					for(f=oldf;f<=newf;f++){
+						f=Math.max(1,f);
+						for(j=0;j<l;j++){
+							script[f].pillarHeight[j]=script[f-1].pillarHeight[j];
+						}
+					}
+
 					for(f=oldf+1;f<newf;f++){
-						script[f].height=pillarHeight-pillarHeight*(f-oldf)/(newf-oldf);	
+						script[f].height=script[oldf].height-(pillarHeight+0.05)*(f-oldf)/(newf-oldf);	
 						script[f].radius=script[oldf].radius;
 						script[f].trunkAngle=script[oldf].trunkAngle;
+						for(i=0;i<pCovered.length;i++){
+							script[f].pillarHeight[pCovered[i]]=Math.max(0,Math.min(pillarHeight,script[f].height));
+							
+						}
 					}
 
 					oldTime=oldTime+moveTime+downTime;
-					oldTarget=target;	
-					pillars[target].pushedDown=true;
-					pillarsLeft-=1;
+					oldTarget=target;
 					oldHeight=0;
+
+					for(i=0;i<pCovered.length;i++){
+						pillars[pCovered[i]].pushedDown=true;
+					}
+					pillarsLeft-=pCovered.length;
 				}
 				//round to origin
 				//up
@@ -957,11 +1003,17 @@
 
 				var oldf=Math.round((oldTime)/timeStep);
 				var newf=Math.round((oldTime+upTime)/timeStep);
-				console.log(oldf,newf);
 
 				script[newf].height=pillarHeight;
 				script[newf].radius=script[oldf].radius;
 				script[newf].trunkAngle=script[oldf].trunkAngle;
+				for(f=oldf;f<=newf;f++){
+					f=Math.max(1,f);
+					for(j=0;j<l;j++){
+						script[f].pillarHeight[j]=script[f-1].pillarHeight[j];
+					}
+				}
+
 				for(f=oldf+1;f<newf;f++){
 					script[f].height=pillarHeight*(f-oldf)/(newf-oldf);	
 					script[f].radius=script[oldf].radius;
@@ -974,19 +1026,24 @@
 				angle=getRotate(rotateList[oldTarget],rotateList[target]);
 				moveTime=1-oldTime-upTime;
 				var angleSpeed=angle/moveTime;
-				//console.log("angle", angle,"dtime",dtime,"moveTime",moveTime,"downTime",downTime,"angleSpeed",angleSpeed);
 				//如果速度太慢，则修正为一个较快的速度.
 				if(Math.abs(angleSpeed)<3){
 					angleSpeed=angleSpeed/Math.abs(angleSpeed)*3;
 					moveTime=angle/angleSpeed;
 				}
 
-				var newf=Math.round((oldTime+upTime+upTime)/timeStep);
+				var newf=Math.round((oldTime+upTime+moveTime)/timeStep);
 				oldf=Math.round((oldTime+upTime)/timeStep);
-				console.log(oldf,newf);
 				script[newf].height=pillarHeight;
 				script[newf].radius=points[target].length();
 				script[newf].trunkAngle=rotateList[oldf]+angle;
+				for(f=oldf;f<=newf;f++){
+					f=Math.max(1,f);
+					for(j=0;j<l;j++){
+						script[f].pillarHeight[j]=script[f-1].pillarHeight[j];
+					}
+				}
+
 				for(f=oldf+1;f<newf;f++){
 					script[f].height=oldHeight+(pillarHeight-oldHeight)*(f-oldf)/(newf-oldf);
 					script[f].radius=script[oldf].radius+(script[newf].radius-script[oldf].radius)*(f-oldf)/(newf-oldf);
@@ -994,8 +1051,7 @@
 					//console.log("angle/(newf-oldf)",angle/(newf-oldf),"(newf-oldf)",newf-oldf,"angle",angle,"newf",newf,"oldf",oldf);
 				}
 
-				
-				updatePillars();
+				updatePillars();	
 				return ;
 			}
 			function getRotate(a1,a2){

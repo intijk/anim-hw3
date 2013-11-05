@@ -24,6 +24,11 @@
 				padding:0px;
 				margin:0px;
 			}
+			#info{
+				padding:0px;
+				margin:0px;
+				position:absolute;
+			}
 
 
 		</style>
@@ -74,9 +79,14 @@
 		<button class="btn" type="button" id="view6" onclick="setView(6)"/>
 			<img class="btnImg" src="image/view6.png" id="view6Img"></img>
 		</button> 
+		
+		<p id="info">
 
+		<pre>
+</pre>
+		</p>
 		<script>
-			var loader, base, trunk, arm1, arm2, hammer;
+			var loader, base, trunk, arm1, arm2, hammer, umbrella;
 			var container, stats;
 			var camera, scene, renderer, objects;
 			var particleLight, pointLight;
@@ -173,6 +183,14 @@
 						hammer.axis=new THREE.Vector3(0,0,1);
 						hammer.applyMatrix(m);
 					} );
+					loader.load( 'obj/robot/umbrella.js', function ( geometry ) {
+						umbrella = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial( { overdraw:true } ) );
+
+						//hammer.pivot=new THREE.Vector3(-0.914,0.176,0);
+						//hammer.axis=new THREE.Vector3(0,0,1);
+						umbrella.applyMatrix(m);
+					} );
+
 				}
 
 
@@ -284,7 +302,7 @@
 				}
 
 				//buttons
-				resizeButtons();					
+				resizeButtons();
 				
 				updatePillars();
 
@@ -355,6 +373,9 @@
 
 				$('#view6').css("top",topB);
 				$('#view6').css("left",leftB+bWidth*5);
+
+				$('#info').css("top",topB+2*bHeight);
+				$('#info').css("left",leftB);
 
 		
 			}
@@ -861,8 +882,7 @@
 					pathCurve.tList.push(999999);
 				}
 				var tPercent,pos;
-				var hammerRadius=0.2;
-				for(t=0;t<=1;t+=timeStep){
+				var hammerRadius=0.05; for(t=0;t<=1;t+=timeStep){
 					//得到时刻t，球在path上的percent
 					tPercent=panelCurve.getPointX(t).y;
 					//通过percent，得到球在path上的位置
@@ -926,7 +946,7 @@
 					//console.log("oldTarget",oldTarget,"target",target);
 					var angle=getRotate(rotateList[oldTarget],rotateList[target]);
 					var dtime=(tList[target]-oldTime);
-					var moveTime=dtime*0.6;
+					var moveTime=dtime*0.5;
 					var downTime=dtime*0.3;
 					var angleSpeed=angle/moveTime;
 					//console.log("angle", angle,"dtime",dtime,"moveTime",moveTime,"downTime",downTime,"angleSpeed",angleSpeed);

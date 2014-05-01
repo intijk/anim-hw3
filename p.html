@@ -56,6 +56,10 @@
 			<img class="btnImg" src="image/stop.png" id="stopImg"></img>
 		</button>
 
+		<button class="btn" type="button" id="drop" onclick="dropSphere()"/>
+			<img class="btnImg" src="image/drop.png" id="dropImg"></img>
+		</button> 
+
 		<button class="btn" type="button" id="view1" onclick="setView(1)"/>
 			<img class="btnImg" src="image/view1.png" id="view1Img"></img>
 		</button>
@@ -79,6 +83,8 @@
 		<button class="btn" type="button" id="view6" onclick="setView(6)"/>
 			<img class="btnImg" src="image/view6.png" id="view6Img"></img>
 		</button> 
+
+
 		
 		<p id="info">
 
@@ -109,6 +115,7 @@
 			var hammerHeight=0.176*0.76;
 			var trunkRadius=0.13;
 			var f;
+			var spheres=[];
 
 			
 
@@ -186,8 +193,8 @@
 					loader.load( 'obj/robot/umbrella.js', function ( geometry ) {
 						umbrella = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial( { overdraw:true } ) );
 
-						//hammer.pivot=new THREE.Vector3(-0.914,0.176,0);
-						//hammer.axis=new THREE.Vector3(0,0,1);
+						umbrella.pivot=new THREE.Vector3(-0.914,0.176,0);
+						umbrella.axis=new THREE.Vector3(0,0,1);
 						umbrella.applyMatrix(m);
 					} );
 
@@ -272,17 +279,37 @@
 					panelScene.add(panelFloat);
 
 				}
+				//spheres
+				{
+					/*
+					var geometry = new THREE.SphereGeometry( ballRadius, 30, 30 ); 
+					var material = new THREE.MeshNormalMaterial( { overdraw:
+						true  } );
+					var sphere = new THREE.Mesh( geometry, material ); 
+					spheres.push(sphere)
+					spheres[0].position.set(1,ballRadius,1);
+					scene.add(spheres[0]);
+					*/
+				}
 				//ball
 				{
 					var earthTexture = new THREE.Texture();
 					var eLoader = new THREE.ImageLoader();
-
+	
 					eLoader.addEventListener( 'load', function ( event ) {
 						earthTexture.image = event.content;
 						earthTexture.needsUpdate = true;
 					} );
 
-					eLoader.load( 'image/land_ocean_ice_cloud_512.jpg' );
+
+					eLoader.load( 'image/land_ocean_ice_cloud_512.jpg' ); 
+					/*
+					eLoader.load( 'image/land_ocean_ice_cloud_512.jpg' , 
+					function ( event ) {
+						earthTexture.image = event.content;
+						earthTexture.needsUpdate = true;
+					});
+					*/
 
 					var geometry = new THREE.SphereGeometry( ballRadius, 30, 30 );
 					var material = new THREE.MeshBasicMaterial( { map: earthTexture, overdraw: true } );
@@ -304,7 +331,8 @@
 				//buttons
 				resizeButtons();
 				
-				updatePillars();
+				//remove pillars 
+				//updatePillars();
 
 				//script
 				updateScript();
@@ -312,6 +340,9 @@
 				
 			}
 
+			/* pillars: object for pillars 
+			 * When clear/add/delete/move points, the updatePillars is called, geometry will rebuilt
+			 */
 			function updatePillars(){
 				var i;
 				for(i=0;i<pillars.length;i++){
@@ -355,6 +386,9 @@
 
 				$('#stop').css("top",topB+bHeight);
 				$('#stop').css("left",leftB+bWidth*3);
+
+				$('#drop').css("top",topB+bHeight);
+				$('#drop').css("left",leftB+bWidth*4);
 				//views
 				$('#view1').css("top",topB);
 				$('#view1').css("left",leftB+bWidth*0);
@@ -467,20 +501,20 @@
 			somem.makeScale(0.1,0.1,0.1);
 			function render() {
 				if(!modelInitialized){
-					if(base && trunk && arm1 && arm2 && hammer){
-						hammerG=new THREE.Object3D();
+					if(base && trunk && arm1 && arm2 && umbrella){
+						umbrellaG=new THREE.Object3D();
 						arm2G=new THREE.Object3D();
 						arm1G=new THREE.Object3D();
 						trunkG=new THREE.Object3D();
 						baseG=new THREE.Object3D();
-						hammerG.angle=0;
+						umbrellaG.angle=0;
 						arm2G.angle=0;
 						arm1G.angle=0;
 						trunkG.angle=0;
 
 
-						hammerG.add(hammer);
-						arm2G.add(hammerG);
+						umbrellaG.add(umbrella);
+						arm2G.add(umbrellaG);
 						arm2G.add(arm2);
 						arm1G.add(arm2G);
 						arm1G.add(arm1);
@@ -494,37 +528,12 @@
 					}
 					else return;
 				}
-				/*
-				scene.position.x=0
-				scene.position.y=0
-				scene.position.z=0
-				camera.lookAt( scene.position );
-				*/
-
-				/*free rotate for test
-				if(arm1Step>0 && arm1G.angle+arm1Step>90){
-					arm1Step=-arm1Step;
-				}
-				else if(arm1Step<0 && arm1Step+arm1G.angle<0){
-					arm1Step=-arm1Step;
-				}
-				if(arm2Step>0 && arm2G.angle+arm2Step>0){
-					arm2Step=-arm2Step;
-				}
-				else if(arm2Step<0 && arm2Step+arm2G.angle<-120){
-					arm2Step=-arm2Step;
-				}
-				*/
-
-
-				//rotateArm1(arm1G.angle+arm1Step);
-				//rotateArm2(arm2G.angle+arm2Step);
-				//rotateTrunk(trunkG.angle+trunkStep);
-				//balanceHammer();
 				f=Math.round(timeT/timeStep);
+				//rotate parts angle with the script says
 				trunkScript();
 				armScript();
-				pillarScript();
+				//set pillar height as script says
+				//pillarScript();
 
 				if(player.status=="Play"){
 					prevTimeT=timeT;
@@ -532,11 +541,46 @@
 					if(timeT>1)timeT=0;
 					updatePointer();
 				}
+				//update Ball position and rotation
 				updateBall();
+				//update curve X tics on panel
 				updatePointer();
-
+				updateSpheres();	
 				renderer.render( scene, camera );
 				panelR.render(panelScene,panelCamera);
+			}
+
+			function updateSpheres(){
+				Array.prototype.remove = function(from, to) {
+				  var rest = this.slice((to || from) + 1 || this.length);
+				  this.length = from < 0 ? this.length + from : from;
+				  return this.push.apply(this, rest);
+				};
+
+				var rangeR=1.5;	
+				for(var i=0;i<spheres.length;i++){
+					r=spheres[i].position.x * spheres[i].position.x+
+					spheres[i].position.y * spheres[i].position.y;
+					if(r>rangeR*rangeR){
+						scene.remove(spheres[i]);
+						spheres.remove(i);	
+					}
+				}
+				var rangeZ=3;
+				for(var i=0;i<spheres.length;i++){
+					if(spheres[i].position.z > rangeZ || spheres[i].position.z<-rangeZ)
+					{
+						scene.remove(spheres[i]);
+						spheres.remove(i);
+					}
+				}
+					
+				for(var i=0;i<spheres.length;i++){
+					var v=spheres[i].position.y-spheres[i].prevpos.y;
+					var g=-0.002;
+					spheres[i].prevpos.y=spheres[i].position.y;
+					spheres[i].position.y=spheres[i].position.y+v+g;
+				}
 			}
 			function trunkScript(){
 				rotateTrunk(script[f].trunkAngle+Math.PI);
@@ -567,7 +611,7 @@
 					console.log("cannot find a");
 					console.log("Cannot reach radius=",script[f].radius,"height=",script[f].height);
 					*/
-					balanceHammer();
+					balanceUmbrella();
 					return;
 				}
 				done=false;
@@ -585,13 +629,14 @@
 					console.log("cannot find b");
 					console.log("Cannot reach radius=",script[f].radius,"height=",script[f].height);
 					*/
-					balanceHammer();
+					balanceUmbrella();
 					return;
 				}
 				rotateArm1(a);
 				rotateArm2(b);
-				balanceHammer();
+				balanceUmbrella();
 			}
+			/*
 			function pillarScript(){
 				if(f==0){
 					updatePillars();
@@ -611,6 +656,7 @@
 					}
 				}
 			}
+			*/
 			function updateBall(){
 				var percent=panelCurve.getPointX(timeT).y
 				var pos=pathCurve.getPointAt(pathCurve.getLength()*percent);
@@ -683,10 +729,25 @@
 				m.translate(new THREE.Vector3(-1*hammer.pivot.x, -1*hammer.pivot.y,-1*hammer.pivot.z));
 				hammerG.applyMatrix(m);
 			}
+			function rotateUmbrella(angle){
+				umbrellaG.angle=angle;
+				umbrellaG.matrix.identity();
+				var m=new THREE.Matrix4();
+
+				m.translate(umbrella.pivot);
+				m.rotateByAxis(umbrella.axis, angle);
+				m.translate(new THREE.Vector3(-1*umbrella.pivot.x, -1*umbrella.pivot.y,-1*umbrella.pivot.z));
+
+				umbrellaG.applyMatrix(m);
+			}
+
 			function balanceHammer(){
 				rotateHammer(arm1G.angle-arm2G.angle);
 			}
 
+			function balanceUmbrella(){
+				rotateUmbrella(arm1G.angle-arm2G.angle);
+			}
 			//Tackle Interactive
 			renderer.domElement.addEventListener('mousedown', onMouseDown, false);
 			function getGridPos(event){
@@ -749,6 +810,7 @@
 					pathCurve.mouseDown=0;
 					pathCurve.pointPos=-1;
 					renderer.domElement.style.cursor="default";
+					//move point
 					updateScript();
 				}
 				controls.userRotate=1;
@@ -823,6 +885,7 @@
 					panelCurve.mouseDown=0;
 					panelCurve.pointPos=-1;
 					panelR.domElement.style.cursor="default";
+					//move speed curve
 					updateScript();
 				}else if(panelPointer.mouseDown){
 					panelPointer.mouseDown=0;
@@ -845,6 +908,9 @@
 				ballRotateZ=0;
 				$('#playOrPauseImg').attr("src","image/play.png");
 			}
+			/* update script, called when init, clear/add/delete/move points, move speed curve 
+			 * Still need it under all mentioned senarios, but the action need be changed.
+			 */
 			function updateScript(){
 				console.log("updateScript");
 				var pathLength=pathCurve.getLength();
@@ -854,25 +920,39 @@
 					script.push({
 						trunkAngle:0,
 						radius:0.6,
-						height:pillarHeight,
+						height:2*ballRadius+0.01,
 						able:true,
-						pillarHeight:[],
 					});
 				}
 				//少于两个点退出
 				if(pathCurve.points.length<2){
 					return ;
 				}
+				var zero=new THREE.Vector2();
+				var percent,pos,angle;
+				for(t=0;t<=1;t+=timeStep){
+					percent=panelCurve.getPointX(t).y
+					pos=pathCurve.getPointAt(pathCurve.getLength()*percent);
+					angle=Math.acos(pos.x/pos.distanceTo(zero));
+					if(pos.y<0){angle*=-1};
+					script[Math.round(t/timeStep)].trunkAngle=angle;
+					script[Math.round(t/timeStep)].radius=pos.distanceTo(zero);
+				}
 				//多于两个点初始化
+				/*
 				var rotateList=getRotateList();
 				for(t=0;t<=1;t+=timeStep){
 					script[Math.round(t/timeStep)].trunkAngle=rotateList[0];
 					script[Math.round(t/timeStep)].radius=pathCurve.points[0].length();
 					script[Math.round(t/timeStep)].height=pillarHeight;
 					script[Math.round(t/timeStep)].able=true;
+					
+
+					//### delete to clear pillarHeight data in frames.
 					for(j=0;j<pathCurve.points.length;j++){
 						script[Math.round(t/timeStep)].pillarHeight.push(pillarHeight);
 					}
+
 				}
 
 				pathCurve.tList=[];
@@ -882,7 +962,8 @@
 					pathCurve.tList.push(999999);
 				}
 				var tPercent,pos;
-				var hammerRadius=0.05; for(t=0;t<=1;t+=timeStep){
+				var hammerRadius=0.05; 
+				for(t=0;t<=1;t+=timeStep){
 					//得到时刻t，球在path上的percent
 					tPercent=panelCurve.getPointX(t).y;
 					//通过percent，得到球在path上的位置
@@ -1071,7 +1152,8 @@
 					//console.log("angle/(newf-oldf)",angle/(newf-oldf),"(newf-oldf)",newf-oldf,"angle",angle,"newf",newf,"oldf",oldf);
 				}
 
-				updatePillars();	
+				//updatePillars();	
+				*/
 				return ;
 			}
 			function getRotate(a1,a2){
@@ -1108,6 +1190,26 @@
 					rotateList.push(a2);
 				}
 				return rotateList;
+			}
+
+			function dropSphere(){
+				var sphereRadius=0.05;
+				var h=1;
+				var v = new THREE.Vector3();
+				var geometry = new THREE.SphereGeometry( sphereRadius, 30, 30 ); 
+				var material = new THREE.MeshNormalMaterial( { overdraw:
+					true  } );
+				var sphere = new THREE.Mesh( geometry, material ); 
+				v.x=(script[f].radius-ballRadius)*Math.cos(script[f].trunkAngle);
+				v.z=(script[f].radius-ballRadius)*Math.sin(script[f].trunkAngle);
+
+				sphere.position.set(v.x,h,v.z);
+				sphere.prevpos=new THREE.Vector3();
+				sphere.prevpos.set(v.x,h,v.z);
+				spheres.push(sphere)
+
+				//spheres[spheres.length-1].position.set(v.x,h,v.z);
+				scene.add(spheres[spheres.length-1]);
 			}
 		</script>
 	</body>
